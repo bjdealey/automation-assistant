@@ -1,0 +1,81 @@
+{
+  "metadata": { "name": "SampleInvoiceBot", "schemaVersion": "2" },
+  "packages": [
+    { "name": "Excel", "version": "3.2.0" },
+    { "name": "String", "version": "1.0.0" },
+    { "name": "Loop", "version": "2.1.0" }
+  ],
+  "variables": [
+    { "name": "vInvoiceFolder", "type": "STRING", "input": true },
+    { "name": "vCount", "type": "NUMBER" },
+    { "name": "vApiPassword", "type": "CREDENTIAL" }
+  ],
+  "nodes": [
+    {
+      "uid": "n1",
+      "packageName": "Excel",
+      "commandName": "Open",
+      "attributes": [
+        { "name": "filePath", "value": { "type": "STRING", "string": "C:\\data\\invoices.xlsx" } }
+      ]
+    },
+    {
+      "uid": "n2",
+      "packageName": "Loop",
+      "commandName": "Loop",
+      "branches": [
+        {
+          "name": "body",
+          "nodes": [
+            {
+              "uid": "n3",
+              "packageName": "Excel",
+              "commandName": "GetCell",
+              "attributes": [
+                { "name": "cell", "value": { "type": "STRING", "string": "$vCount$" } }
+              ]
+            },
+            {
+              "uid": "n4",
+              "packageName": "IF",
+              "commandName": "if",
+              "branches": [
+                {
+                  "name": "then",
+                  "nodes": [
+                    {
+                      "uid": "n5",
+                      "packageName": "TaskBot",
+                      "commandName": "runTask",
+                      "attributes": [
+                        { "name": "botPath", "value": { "type": "STRING", "string": "Bots/ProcessInvoice.bot" } }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "uid": "n6",
+              "packageName": "Delay",
+              "commandName": "delay",
+              "attributes": [
+                { "name": "seconds", "value": { "type": "NUMBER", "number": 5 } }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "uid": "n7",
+      "packageName": "Rest",
+      "commandName": "post",
+      "attributes": [
+        { "name": "url", "value": { "type": "STRING", "string": "https://api.example.com/invoices" } },
+        { "name": "password", "value": { "type": "STRING", "string": "hunter2SuperSecret" } },
+        { "name": "note", "value": { "type": "STRING", "string": "uses $vMissing$ here" } }
+      ]
+    }
+  ]
+}

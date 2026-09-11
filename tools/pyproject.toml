@@ -1,0 +1,17 @@
+[project]
+name = "a360tools"
+version = "0.1.0"
+description = "Deterministic, schema-tolerant utilities for Automation Anywhere A360 bot JSON"
+requires-python = ">=3.10"
+dependencies = []                      # standard library only, by design
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["a360tools"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
