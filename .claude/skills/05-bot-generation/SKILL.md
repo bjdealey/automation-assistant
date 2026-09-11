@@ -5,6 +5,12 @@ description: Generate valid Automation Anywhere A360 bot JSON from an agreed spe
 
 # 05 · Bot generation
 
+> **Status: draft-only (pending ground truth).** The A360 schema is `INFERRED`.
+> A generated bot **cannot** be confirmed valid until the schema is `CONFIRMED`
+> from a real export *and* the output round-trips through the Control Room
+> (generate → import → re-export → diff). Until then, always label generated
+> JSON **unverified** and never present it as known-valid.
+
 **Goal:** produce A360 bot JSON that is syntactically valid and structurally
 faithful to the **confirmed** schema — or clearly state where it cannot be.
 

@@ -12,6 +12,12 @@ and manage bots — grounded in three sources of knowledge:
 It treats existing bots as *evidence*, not as proof of correctness, and it never
 presents a guess as an A360 fact.
 
+> **Current scope:** a **solo, offline advisor** — it reasons over bot JSON you
+> paste or drop in (review, troubleshoot, document, dependency/impact). It does
+> not talk to a live Control Room. Bot-JSON *generation* (skill 05) and a firm
+> validity *verdict* (skill 06) are **experimental / draft-only** until the
+> schema is `CONFIRMED` from a real export. See §"Current scope" in `CLAUDE.md`.
+
 ## What's here
 
 | Path | Purpose |
@@ -48,6 +54,10 @@ against your environment.
 
 ## Status
 
-Scaffold. The skills and tools are in place; the schema working model is
-`INFERRED` and must be validated against real exports from your A360
-environment before it is relied upon.
+Working scaffold, honest about its limits. The 15 skills and `a360tools` are in
+place and the tests pass — but the schema working model in
+`knowledge/schema/a360-bot-json.md` is `INFERRED`, and the test fixture
+(`tools/tests/fixtures/hypothesis_bot.json`) encodes a *hypothesis*, not a
+confirmed schema. **The first real bot you provide (a paste counts) is the
+trigger** to promote the schema to `CONFIRMED`, tighten the extractors, and add
+a real fixture. Until then, treat schema/generation/verdict output as unverified.

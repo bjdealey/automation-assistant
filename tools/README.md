@@ -58,7 +58,7 @@ tools/
 │   ├── validate.py        # heuristic validation report
 │   └── cli.py             # argparse CLI + renderers
 └── tests/
-    ├── fixtures/sample_bot.json   # synthetic bot matching the schema hypothesis
+    ├── fixtures/hypothesis_bot.json  # synthetic bot encoding the schema HYPOTHESIS (not truth)
     └── test_a360tools.py
 ```
 

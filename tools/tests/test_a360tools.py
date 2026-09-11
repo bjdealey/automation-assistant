@@ -17,7 +17,7 @@ from a360tools import cli
 
 HERE = os.path.dirname(__file__)
 FIXTURES = os.path.join(HERE, "fixtures")
-SAMPLE = os.path.join(FIXTURES, "sample_bot.json")
+SAMPLE = os.path.join(FIXTURES, "hypothesis_bot.json")
 
 
 @pytest.fixture
@@ -142,7 +142,7 @@ def test_diff_identical_is_no_change(bot):
 def test_crawl_finds_fixture():
     rows = crawl.find_bot_files(FIXTURES)
     rels = {r["relpath"] for r in rows}
-    assert "sample_bot.json" in rels
+    assert "hypothesis_bot.json" in rels
     assert "_invalid.bot" in rels
 
 
@@ -150,7 +150,7 @@ def test_inventory_handles_good_and_bad():
     inv = inventory.inventory(FIXTURES)
     assert inv["aggregate"]["bot_count"] >= 1
     assert inv["aggregate"]["error_count"] >= 1   # _invalid.bot
-    assert any(b["relpath"] == "sample_bot.json" for b in inv["bots"])
+    assert any(b["relpath"] == "hypothesis_bot.json" for b in inv["bots"])
 
 
 # ---------------------------------- cli ----------------------------------

@@ -8,6 +8,20 @@ A360 bots.
 It is **not** a generic chatbot. It is an engineering system whose reliability
 grows as validated observations accumulate in the knowledge base.
 
+## Current scope (this deployment)
+
+- **Mode — offline advisor.** It reasons over bot JSON you hand it (paste it in
+  or drop a file): review, troubleshoot, document, dependency/impact, corpus
+  analysis. It does **not** talk to a live Control Room.
+- **Operator — solo.** Optimised for one engineer's speed; no team/CI ceremony.
+- **Ground truth — none yet.** The bot-JSON schema is `INFERRED`. The first
+  real bot you provide (a paste counts) is the trigger to promote it (see §4).
+- **Experimental / pending ground truth:** JSON *generation* (skill 05) and a
+  firm validity *verdict* (skill 06) are **draft-only** until the schema is
+  `CONFIRMED` from a real export and a generated bot round-trips through the
+  Control Room (generate → import → re-export → diff). Treat their output as
+  unverified until then; never present a generated bot as known-valid.
+
 ---
 
 ## 1. Non-negotiable operating principles
@@ -105,23 +119,27 @@ automation-assistant/
 Skills are independent and composable. Invoke the one that matches the task; it
 will pull in others as needed.
 
-| # | Skill | Use it to… |
-|---|-------|-----------|
-| 01 | `01-platform-discovery` | Inspect the A360 UI and map GUI → JSON → runtime. |
-| 02 | `02-a360-json-schema` | Work with / reverse-engineer the bot JSON schema. |
-| 03 | `03-bot-corpus-analysis` | Inventory & analyse a folder of existing bots. |
-| 04 | `04-bot-architecture` | Turn an automation idea into an engineering spec. |
-| 05 | `05-bot-generation` | Generate valid A360 bot JSON from a spec. |
-| 06 | `06-bot-validation` | Run the validation pass over bot JSON. |
-| 07 | `07-troubleshooting` | Diagnose a failing bot from evidence. |
-| 08 | `08-bot-review` | Review a bot across 6 quality dimensions. |
-| 09 | `09-bot-refactoring` | Make a targeted improvement safely. |
-| 10 | `10-bot-documentation` | Produce documentation for a bot. |
-| 11 | `11-dependency-analysis` | Build the bot dependency graph. |
-| 12 | `12-testing` | Design a test strategy / test cases. |
-| 13 | `13-security-review` | Audit credentials, secrets, sensitive data. |
-| 14 | `14-performance-review` | Find performance and efficiency problems. |
-| 15 | `15-change-impact-analysis` | Assess the blast radius of a proposed change. |
+| # | Skill | Use it to… | Status |
+|---|-------|-----------|--------|
+| 01 | `01-platform-discovery` | Inspect the A360 UI and map GUI → JSON → runtime. | pending |
+| 02 | `02-a360-json-schema` | Work with / reverse-engineer the bot JSON schema. | live |
+| 03 | `03-bot-corpus-analysis` | Inventory & analyse a folder of existing bots. | pending |
+| 04 | `04-bot-architecture` | Turn an automation idea into an engineering spec. | live |
+| 05 | `05-bot-generation` | Generate valid A360 bot JSON from a spec. | pending |
+| 06 | `06-bot-validation` | Run the validation pass over bot JSON. | partial |
+| 07 | `07-troubleshooting` | Diagnose a failing bot from evidence. | live |
+| 08 | `08-bot-review` | Review a bot across 6 quality dimensions. | live |
+| 09 | `09-bot-refactoring` | Make a targeted improvement safely. | live |
+| 10 | `10-bot-documentation` | Produce documentation for a bot. | live |
+| 11 | `11-dependency-analysis` | Build the bot dependency graph. | live |
+| 12 | `12-testing` | Design a test strategy / test cases. | live |
+| 13 | `13-security-review` | Audit credentials, secrets, sensitive data. | live |
+| 14 | `14-performance-review` | Find performance and efficiency problems. | live |
+| 15 | `15-change-impact-analysis` | Assess the blast radius of a proposed change. | live |
+
+**Status:** `live` = works today on bot JSON you paste in · `partial` = works,
+but a firm verdict waits on ground truth · `pending` = needs an asset not yet
+available (Control Room UI access, a bot corpus, or a `CONFIRMED` schema).
 
 **Example composition chains**
 
@@ -150,6 +168,10 @@ will pull in others as needed.
 - The canonical working model of the bot JSON schema lives in
   `knowledge/schema/a360-bot-json.md`. **It is INFERRED until validated against
   the user's environment.** Correct it from real exports.
+- **Ground-truth-first.** The first real bot JSON provided — a paste counts, a
+  Control Room export is better — is the trigger to promote the schema from
+  `INFERRED`→`CONFIRMED` (citing that sample as evidence), then to tighten the
+  `a360tools` extractors and add a real test fixture beside the hypothesis one.
 
 ---
 
@@ -192,22 +214,5 @@ assumptions and proceed. When useful, structure answers as:
 
 Do not bury a concrete engineering answer under generic A360 explanation.
 
----
-
-## Agent skills
-
-Configuration for Matt Pocock's engineering skills (from `mattpocock/skills`),
-written by the `setup-matt-pocock-skills` skill. These apply only when those
-skills are installed and invoked; they do not change the A360 copilot principles
-above.
-
-### Issue tracker
-
-Issues and specs live as GitHub issues in `bjdealey/automation-assistant` (the
-conventions use the `gh` CLI; in a remote Claude Code session the equivalent
-GitHub MCP tools are used instead). See `docs/agents/issue-tracker.md`.
-
-### Domain docs
-
-single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See
-`docs/agents/domain.md`.
+**Output default (solo working loop):** deliver analysis in chat; write a durable
+note to `knowledge/bots/<bot>.md` only when asked — chat-first, save-on-request.

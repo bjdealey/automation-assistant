@@ -8,9 +8,11 @@ Two things live here:
    learned. Findings from real bots are tagged `OBSERVED` unless independently
    validated.
 
-> Do not commit exports containing secrets or sensitive data. Scrub first, or
-> keep them out of version control (see `.gitignore`). Bot logic tagged
-> `OBSERVED` is evidence of how the org builds bots — not proof it is correct.
+> **Real exports are git-ignored by default.** `knowledge/bots/corpus/` is in
+> `.gitignore`, so real `.bot` files you drop there stay local — analyse them
+> without committing. Commit a bot only after deliberately **scrubbing**
+> credentials, paths, and PII. Bot logic tagged `OBSERVED` is evidence of how
+> the org builds bots — not proof it is correct.
 
 ### Per-bot analysis template
 

@@ -5,6 +5,11 @@ description: Run the validation pass over generated or edited A360 bot JSON befo
 
 # 06 · Bot validation
 
+> **Status: partial (pending ground truth).** Until the schema is `CONFIRMED`
+> from a real export, the honest ceiling is **LIKELY VALID (unverified)**. The
+> 11-point checks and `a360tools validate` are heuristic signals, not a
+> Control Room validity guarantee.
+
 **Goal:** establish, and honestly report, whether bot JSON is valid before it is
 presented or used.
 

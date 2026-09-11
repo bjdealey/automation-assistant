@@ -1,0 +1,3 @@
+# Dev-only dependencies. The a360tools package itself needs NO third-party
+# packages (Python standard library only) — this is just the test runner.
+pytest>=7
