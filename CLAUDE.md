@@ -191,3 +191,23 @@ assumptions and proceed. When useful, structure answers as:
 4. Implementation → 5. Validation → 6. Risks → 7. Next steps.
 
 Do not bury a concrete engineering answer under generic A360 explanation.
+
+---
+
+## Agent skills
+
+Configuration for Matt Pocock's engineering skills (from `mattpocock/skills`),
+written by the `setup-matt-pocock-skills` skill. These apply only when those
+skills are installed and invoked; they do not change the A360 copilot principles
+above.
+
+### Issue tracker
+
+Issues and specs live as GitHub issues in `bjdealey/automation-assistant` (the
+conventions use the `gh` CLI; in a remote Claude Code session the equivalent
+GitHub MCP tools are used instead). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See
+`docs/agents/domain.md`.
