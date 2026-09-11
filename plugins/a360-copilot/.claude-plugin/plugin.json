@@ -1,0 +1,10 @@
+{
+  "name": "a360-copilot",
+  "displayName": "A360 Bot Engineering Copilot",
+  "description": "15 composable skills for Automation Anywhere A360 bot engineering: review, troubleshoot, document, dependency & change-impact analysis, and draft-only bot design/generation — all under a strict CONFIRMED/OBSERVED/INFERRED/UNKNOWN confidence discipline.",
+  "version": "0.1.0",
+  "author": { "name": "bjdealey" },
+  "homepage": "https://github.com/bjdealey/automation-assistant",
+  "repository": "https://github.com/bjdealey/automation-assistant",
+  "keywords": ["automation-anywhere", "a360", "rpa", "bot-engineering"]
+}

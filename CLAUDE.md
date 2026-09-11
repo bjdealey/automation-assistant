@@ -89,11 +89,16 @@ Read-only analysis utilities never mutate their inputs.
 automation-assistant/
 ├── CLAUDE.md                  ← you are here (operating manual)
 ├── README.md                  ← human-facing overview
-├── .claude/skills/            ← the 15 composable copilot skills (loadable)
-│   ├── 01-platform-discovery/SKILL.md
-│   ├── 02-a360-json-schema/SKILL.md
-│   ├── … (03–14) …
-│   └── 15-change-impact-analysis/SKILL.md
+├── .claude-plugin/marketplace.json  ← plugin marketplace manifest
+├── plugins/
+│   └── a360-copilot/           ← the distributable plugin (canonical skills)
+│       ├── .claude-plugin/plugin.json
+│       ├── README.md
+│       └── skills/01-…/SKILL.md … 15-…/SKILL.md
+├── .claude/
+│   ├── skills/                 ← 01–15 SYMLINK into the plugin; grill-me/grilling local
+│   ├── hooks/session-start.sh  ← web-session readiness hook
+│   └── settings.json           ← SessionStart hook registration
 ├── knowledge/                 ← the growing, source-tagged knowledge base
 │   ├── platform/              ← A360 platform behaviour (CONFIRMED/…)
 │   ├── schema/                ← the working model of A360 bot JSON
@@ -108,9 +113,12 @@ automation-assistant/
     └── tests/                 ← unit tests + a synthetic fixture
 ```
 
-> **Skill location note:** the spec proposed `skills/01-…`. They live under
-> `.claude/skills/` instead so Claude Code loads them as real, invocable skills.
-> The `01-…`–`15-…` numbering is preserved in the skill names.
+> **Skills live in the plugin now.** The 15 A360 skills are canonical under
+> `plugins/a360-copilot/skills/` — that is what the marketplace distributes.
+> `.claude/skills/01–15` are relative symlinks back into the plugin, so they
+> still load as project skills while you work in this repo (one source of truth,
+> no duplication). `grill-me`/`grilling` stay as plain local skills. Adding the
+> marketplace / installing the plugin: see §7.
 
 ---
 
@@ -216,3 +224,25 @@ Do not bury a concrete engineering answer under generic A360 explanation.
 
 **Output default (solo working loop):** deliver analysis in chat; write a durable
 note to `knowledge/bots/<bot>.md` only when asked — chat-first, save-on-request.
+
+---
+
+## 7. Distribution as a Claude Code plugin
+
+This repo is itself a **plugin marketplace**; the A360 skills ship as the
+`a360-copilot` plugin.
+
+```
+/plugin marketplace add bjdealey/automation-assistant
+/plugin install a360-copilot@automation-assistant
+```
+
+- `add` reads `.claude-plugin/marketplace.json` from the repo's **default
+  branch**, so the marketplace must be committed there (a bare `owner/repo` add
+  won't see it on a non-default branch; pin `@<ref>` if needed).
+- Installed skills are namespaced: `/a360-copilot:<skill>` (e.g.
+  `/a360-copilot:08-bot-review`); model-invocable ones also auto-activate.
+- Validate locally: `claude plugin validate ./plugins/a360-copilot --strict`
+  and `claude plugin validate . --strict` (the marketplace).
+- `a360tools` is **not** bundled in the plugin yet — it lives in `tools/` here;
+  skills function as methodologies without it. Bundling it is a planned follow-up.

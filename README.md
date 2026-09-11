@@ -26,6 +26,21 @@ presents a guess as an A360 fact.
 | [`.claude/skills/`](.claude/skills/) | 15 composable copilot skills (`01-…`–`15-…`). |
 | [`knowledge/`](knowledge/) | The source-tagged knowledge base (platform, schema, patterns, org, bots, …). |
 | [`tools/`](tools/) | `a360tools` — deterministic Python utilities for corpus analysis. |
+| [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) | Plugin marketplace manifest — add this repo to Claude Code. |
+| [`plugins/a360-copilot/`](plugins/a360-copilot/) | The distributable `a360-copilot` plugin (the 15 skills). |
+
+## Install as a Claude Code plugin
+
+This repo is a Claude Code **plugin marketplace**. Add it, then install the
+`a360-copilot` plugin (the 15 A360 skills):
+
+```
+/plugin marketplace add bjdealey/automation-assistant
+/plugin install a360-copilot@automation-assistant
+```
+
+The marketplace is read from the repo's **default branch**, so those files must
+be present there. Installed skills are namespaced `/a360-copilot:<skill>`.
 
 ## Core principles (see `CLAUDE.md` for the full set)
 
