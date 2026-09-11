@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "automation-assistant",
+  "owner": {
+    "name": "bjdealey",
+    "url": "https://github.com/bjdealey"
+  },
+  "description": "Marketplace for the A360 Bot Engineering Copilot — skills for Automation Anywhere A360 bot engineering.",
+  "plugins": [
+    {
+      "name": "a360-copilot",
+      "source": "./plugins/a360-copilot",
+      "description": "A360 Bot Engineering Copilot: 15 composable skills for reviewing, troubleshooting, documenting, and analysing Automation Anywhere A360 bots (with draft-only design/generation), under a strict confidence-tagging discipline.",
+      "version": "0.1.0",
+      "author": { "name": "bjdealey" },
+      "homepage": "https://github.com/bjdealey/automation-assistant",
+      "repository": "https://github.com/bjdealey/automation-assistant",
+      "keywords": ["automation-anywhere", "a360", "rpa", "bot-engineering", "copilot"],
+      "category": "development"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Generated analysis output (keep these out of version control)
+output/
+reports/
+*.report.json
+
+# Local-only / scratch (never commit environment-specific data)
+*.local
+*.local.*
+scratch/
+
+# Real bot exports — never commit (may contain paths, service accounts, secrets,
+# PII). Analyse locally; commit only a deliberately scrubbed sample.
+knowledge/bots/corpus/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
