@@ -14,26 +14,21 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from . import extract, model
+from . import model
 
 # Heuristic file-extension set (non-exhaustive; excludes .bot which is a sub-bot).
 FILE_EXTS = (
     ".xlsx", ".xls", ".xlsm", ".csv", ".txt", ".pdf", ".json", ".xml",
     ".docx", ".doc", ".zip", ".log", ".html", ".htm", ".dat", ".png", ".jpg",
 )
-_ABS_PATH_RE = re.compile(r"""^[A-Za-z]:[\\/]|^\\\\[^\\]+\\|^/[^/ ]""")
 _URL_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
 _CRED_HINT_RE = re.compile(r"credential|locker|vault", re.IGNORECASE)
 
 
-def _string_leaves(bot: Any) -> list[tuple[str, str | None, str]]:
-    return list(model.iter_strings(bot))
-
-
-def sub_bots(bot: Any) -> list[dict]:
+def sub_bots(b: model.Bot) -> list[dict]:
     """Candidate sub-bot references: any string ending in .bot."""
     found = {}
-    for path, _key, val in _string_leaves(bot):
+    for path, _key, val in b.string_leaves:
         if val.lower().endswith(".bot"):
             found.setdefault(val, path)
     return sorted(
@@ -42,14 +37,14 @@ def sub_bots(bot: Any) -> list[dict]:
     )
 
 
-def files(bot: Any) -> list[dict]:
+def files(b: model.Bot) -> list[dict]:
     """Candidate file/folder paths referenced as literals."""
     found = {}
-    for path, _key, val in _string_leaves(bot):
+    for path, _key, val in b.string_leaves:
         low = val.lower()
         if low.endswith(".bot"):
             continue  # that's a sub-bot
-        if low.endswith(FILE_EXTS) or _ABS_PATH_RE.search(val):
+        if low.endswith(FILE_EXTS) or model.ABS_PATH_RE.search(val):
             found.setdefault(val, path)
     return sorted(
         ({"reference": ref, "at": at} for ref, at in found.items()),
@@ -57,10 +52,10 @@ def files(bot: Any) -> list[dict]:
     )
 
 
-def urls(bot: Any) -> list[dict]:
+def urls(b: model.Bot) -> list[dict]:
     """External URLs referenced as literals (a proxy for external systems)."""
     found = {}
-    for path, _key, val in _string_leaves(bot):
+    for path, _key, val in b.string_leaves:
         for m in _URL_RE.findall(val):
             found.setdefault(m, path)
     return sorted(
@@ -69,13 +64,13 @@ def urls(bot: Any) -> list[dict]:
     )
 
 
-def credentials(bot: Any) -> list[dict]:
+def credentials(b: model.Bot) -> list[dict]:
     """Candidate credential usages: CREDENTIAL-typed vars or credential-hinted keys."""
     out = []
-    for var in extract.extract_variables(bot):
+    for var in b.variables:
         if var["type"] and "credential" in var["type"].lower():
             out.append({"kind": "variable", "reference": var["name"], "at": "variables"})
-    for path, key, _val in _string_leaves(bot):
+    for path, key, _val in b.string_leaves:
         if key and _CRED_HINT_RE.search(key):
             out.append({"kind": "reference", "reference": key, "at": path})
     # de-dup
@@ -85,12 +80,13 @@ def credentials(bot: Any) -> list[dict]:
 
 def extract_dependencies(bot: Any) -> dict:
     """All dependency edges for one bot."""
+    b = model.Bot.of(bot)
     return {
-        "packages": extract.extract_packages(bot),
-        "sub_bots": sub_bots(bot),
-        "files": files(bot),
-        "urls": urls(bot),
-        "credentials": credentials(bot),
+        "packages": b.packages,
+        "sub_bots": sub_bots(b),
+        "files": files(b),
+        "urls": urls(b),
+        "credentials": credentials(b),
         "_method": "heuristic; file/sub-bot/credential detection may be incomplete "
                    "until the schema is CONFIRMED",
     }

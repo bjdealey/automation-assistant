@@ -9,14 +9,15 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-from . import extract, model
+from . import model
 
 
 def metrics(bot: Any) -> dict:
-    actions = extract.extract_actions(bot)
+    b = model.Bot.of(bot)
+    actions = b.actions
     categories = Counter(a["category"] for a in actions)
-    variables = extract.extract_variables(bot)
-    packages = extract.extract_packages(bot)
+    variables = b.variables
+    packages = b.packages
 
     m = {
         "action_count": len(actions),
@@ -28,7 +29,7 @@ def metrics(bot: Any) -> dict:
         "error_handlers": categories.get("error", 0),
         "sub_bot_calls": categories.get("runtask", 0),
         "fixed_waits": categories.get("wait", 0),
-        "max_json_depth": model.json_depth(bot),
+        "max_json_depth": b.depth,
     }
     # A simple, documented, deterministic score. Higher = more to reason about.
     m["complexity_score"] = (
