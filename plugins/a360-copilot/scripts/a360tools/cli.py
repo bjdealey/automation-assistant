@@ -153,28 +153,37 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true", help="emit full JSON output")
     sub = p.add_subparsers(dest="command", required=True)
 
-    sp = sub.add_parser("crawl", help="find candidate bot files in a folder")
+    # --json is accepted before OR after the subcommand. The per-subcommand copy
+    # uses a SUPPRESS default so it never clobbers a --json given before it.
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--json", action="store_true", default=argparse.SUPPRESS,
+                        help="emit full JSON output (may also precede the subcommand)")
+
+    sp = sub.add_parser("crawl", parents=[common],
+                        help="find candidate bot files in a folder")
     sp.add_argument("path")
 
-    sp = sub.add_parser("inventory", help="summarise a corpus of bots")
+    sp = sub.add_parser("inventory", parents=[common],
+                        help="summarise a corpus of bots")
     sp.add_argument("path")
 
     for name, help_ in (("extract", "packages/actions/variables of one bot"),
                         ("deps", "dependency edges of one bot"),
                         ("complexity", "complexity metrics of one bot"),
                         ("validate", "heuristic validation report of one bot")):
-        sp = sub.add_parser(name, help=help_)
+        sp = sub.add_parser(name, parents=[common], help=help_)
         sp.add_argument("file")
 
-    sp = sub.add_parser("diff", help="structural diff of two bots")
+    sp = sub.add_parser("diff", parents=[common], help="structural diff of two bots")
     sp.add_argument("old")
     sp.add_argument("new")
 
-    sp = sub.add_parser("normalize", help="stable, sorted JSON (validated round-trip)")
+    sp = sub.add_parser("normalize", parents=[common],
+                        help="stable, sorted JSON (validated round-trip)")
     sp.add_argument("file")
     sp.add_argument("-o", "--output", help="write to file instead of stdout")
 
-    sp = sub.add_parser("ingest-plan",
+    sp = sub.add_parser("ingest-plan", parents=[common],
                         help="propose knowledge/ entries for one bot (read-only)")
     sp.add_argument("file")
     sp.add_argument("--attested-export", action="store_true",
@@ -182,7 +191,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--ledger",
                     help="ingest ledger JSON; an already-recorded bot is a no-op")
 
-    sp = sub.add_parser("ingest-corpus",
+    sp = sub.add_parser("ingest-corpus", parents=[common],
                         help="propose knowledge/ entries for a folder of bots (read-only)")
     sp.add_argument("path")
     sp.add_argument("--attested-export", action="store_true",
