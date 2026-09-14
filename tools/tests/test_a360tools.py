@@ -249,6 +249,37 @@ def test_ingest_plan_is_read_only(bot):
     assert bot == before
 
 
+def test_ingest_noop_when_hash_in_ledger(bot):
+    h = ingest.bot_hash(bot)
+    ledger = {h: {"name": "SampleInvoiceBot", "version": "2",
+                  "provenance": "observed", "first_seen": "2026-01-01",
+                  "source": "corpus/x.json"}}
+    p = ingest.plan(bot, ledger=ledger)
+    assert p["idempotent_noop"] is True
+    assert p["entries"] == []
+    assert p["ledger_line"] is None
+    assert p["hash"] == h          # identity still reported for display
+
+
+def test_ingest_new_bot_emits_one_ledger_line(bot):
+    # a ledger that does NOT contain this bot's hash -> not a no-op
+    p = ingest.plan(bot, ledger={"0" * 64: {}}, source="corpus/x.json")
+    assert p["idempotent_noop"] is False
+    assert p["entries"]
+    assert p["ledger_line"]["hash"] == p["hash"]
+    assert p["ledger_line"]["source"] == "corpus/x.json"
+
+
+def test_ingest_empty_ledger_is_not_noop(bot):
+    p = ingest.plan(bot, ledger={})
+    assert p["idempotent_noop"] is False
+    assert p["entries"]
+
+
+def test_load_ledger_missing_returns_empty(tmp_path):
+    assert ingest.load_ledger(str(tmp_path / "nope.json")) == {}
+
+
 def test_cli_ingest_plan_json(capsys):
     rc = cli.main(["--json", "ingest-plan", SAMPLE])
     assert rc == 0
