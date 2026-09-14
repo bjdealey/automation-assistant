@@ -21,7 +21,7 @@ import hashlib
 import json
 from typing import Any
 
-from . import extract, model
+from . import crawl, extract, model
 
 METADATA_KEYS = ("metadata", "meta")
 SCHEMA_VERSION_KEYS = ("schemaversion", "version")
@@ -104,6 +104,37 @@ def _entries(bot: Any, version: str | None, h: str, attested: bool) -> list[dict
         False, version, ev, attested))
 
     return entries
+
+
+def plan_corpus(root: str, *, attested: bool = False,
+                ledger: dict | None = None) -> dict:
+    """Ingest plans for every bot under ``root`` (or a single file). Read-only.
+
+    Discovery reuses ``crawl.find_bot_files`` — no new walk logic. One plan per
+    discovered, loadable bot, sourced from its own path. A bot whose hash is
+    already in ``ledger`` comes back as an idempotent no-op (proposes nothing);
+    so does a later file whose content matches one seen earlier in this run, so
+    a corpus with duplicate bots never yields duplicate entries. Unreadable
+    files are collected under ``errors``, mirroring ``inventory``.
+    """
+    # Copy so we never mutate the caller's ledger; grow it with bots seen this
+    # run so identical files later in the corpus collapse to no-ops too.
+    seen = dict(ledger) if ledger else {}
+    plans: list[dict] = []
+    errors: list[dict] = []
+
+    for f in crawl.find_bot_files(root):
+        try:
+            bot = model.load_bot(f["path"])
+        except model.BotLoadError as exc:
+            errors.append({"path": f["path"], "error": str(exc)})
+            continue
+        p = plan(bot, attested=attested, ledger=seen, source=f["path"])
+        if not p["idempotent_noop"]:
+            seen[p["hash"]] = p["ledger_line"]
+        plans.append(p)
+
+    return {"root": root, "plans": plans, "errors": errors}
 
 
 def load_ledger(path: str) -> dict:

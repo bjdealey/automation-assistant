@@ -123,6 +123,19 @@ def _r_ingest_plan(p):
         print(f"  [{e['confidence']:<9}] {e['target']}/{e['kind']}: {e['statement']}")
 
 
+def _r_ingest_corpus(c):
+    plans = c["plans"]
+    noop = sum(1 for p in plans if p["idempotent_noop"])
+    print(f"root: {c['root']}")
+    print(f"bots: {len(plans)}   new: {len(plans) - noop}   "
+          f"already-ingested: {noop}   errors: {len(c['errors'])}")
+    for p in plans:
+        tag = "already ingested" if p["idempotent_noop"] else f"{len(p['entries'])} entries"
+        print(f"  {(p['name'] or '(unnamed)'):<24} {p['hash'][:12]}  {tag}")
+    for e in c["errors"]:
+        print(f"  ERROR {e['path']}: {e['error']}")
+
+
 def _r_validate(rep):
     s = rep["summary"]
     print(f"json_parse: {rep['json_parse']}   recognised: {rep['recognised']}")
@@ -170,6 +183,14 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--ledger",
                     help="ingest ledger JSON; an already-recorded bot is a no-op")
 
+    sp = sub.add_parser("ingest-corpus",
+                        help="propose knowledge/ entries for a folder of bots (read-only)")
+    sp.add_argument("path")
+    sp.add_argument("--attested-export", action="store_true",
+                    help="attest these are genuine Control Room exports (allows CONFIRMED)")
+    sp.add_argument("--ledger",
+                    help="ingest ledger JSON; already-recorded bots are skipped")
+
     return p
 
 
@@ -196,6 +217,11 @@ def main(argv=None) -> int:
         plan = ingest.plan(_load(args.file), attested=args.attested_export,
                            ledger=ledger, source=args.file)
         _emit(plan, as_json, _r_ingest_plan)
+    elif args.command == "ingest-corpus":
+        ledger = ingest.load_ledger(args.ledger) if args.ledger else None
+        result = ingest.plan_corpus(args.path, attested=args.attested_export,
+                                    ledger=ledger)
+        _emit(result, as_json, _r_ingest_corpus)
     elif args.command == "normalize":
         data = _load(args.file)
         text = model.normalized_json(data)
