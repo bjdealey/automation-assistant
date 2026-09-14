@@ -243,6 +243,24 @@ def test_cli_bad_file_exits_2():
     assert exc.value.code == 2
 
 
+def test_cli_renderers_run_in_text_mode(capsys):
+    # Exercise every human renderer (no --json) so a KeyError/crash inside a
+    # renderer surfaces here instead of only in production.
+    for argv in (
+        ["crawl", FIXTURES],
+        ["inventory", FIXTURES],
+        ["extract", SAMPLE],
+        ["deps", SAMPLE],
+        ["complexity", SAMPLE],
+        ["diff", SAMPLE, SAMPLE],
+        ["ingest-plan", SAMPLE],
+        ["ingest-corpus", FIXTURES],
+    ):
+        rc = cli.main(argv)
+        assert rc == 0, argv
+        assert capsys.readouterr().out.strip(), argv
+
+
 # --------------------------------- ingest ---------------------------------
 
 def test_ingest_hash_stable_across_formatting(bot):

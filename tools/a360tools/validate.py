@@ -16,7 +16,8 @@ from typing import Any
 
 from . import model
 
-_SEVERITY_RANK = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+# Severity order, shared with the CLI renderer so it is defined in one place.
+SEVERITY_RANK = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
 
 _SECRET_KEY_RE = re.compile(
     r"pass(word|wd)?|secret|api[_-]?key|access[_-]?key|client[_-]?secret|"
@@ -116,10 +117,10 @@ def validate_bot(bot: Any) -> dict:
                 "Fixed delay/wait detected; prefer waiting for a condition.",
                 "LOW"))
 
-    findings.sort(key=lambda f: (_SEVERITY_RANK.get(f["severity"], 9),
+    findings.sort(key=lambda f: (SEVERITY_RANK.get(f["severity"], 9),
                                  f["check"], f["location"]))
 
-    summary = {sev: 0 for sev in _SEVERITY_RANK}
+    summary = {sev: 0 for sev in SEVERITY_RANK}
     for f in findings:
         summary[f["severity"]] += 1
 

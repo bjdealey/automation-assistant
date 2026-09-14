@@ -88,10 +88,10 @@ def _r_deps(d):
 
 
 def _r_complexity(m):
-    for k in ("action_count", "distinct_commands", "distinct_packages",
-              "variable_count", "loops", "conditionals", "error_handlers",
-              "sub_bot_calls", "fixed_waits", "max_json_depth", "complexity_score"):
-        print(f"  {k:>18}: {m[k]}")
+    for k, v in m.items():
+        if k.startswith("_"):
+            continue  # meta keys (e.g. _note) are rendered separately
+        print(f"  {k:>18}: {v}")
     print(f"\nnote: {m['_note']}")
 
 
@@ -139,8 +139,7 @@ def _r_ingest_corpus(c):
 def _r_validate(rep):
     s = rep["summary"]
     print(f"json_parse: {rep['json_parse']}   recognised: {rep['recognised']}")
-    print("summary: " + "  ".join(f"{k}={s[k]}" for k in
-          ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO")))
+    print("summary: " + "  ".join(f"{k}={s[k]}" for k in validate.SEVERITY_RANK))
     for f in rep["findings"]:
         print(f"  {f['severity']:<8} [{f['check']}] {f['location']}\n"
               f"           {f['message']} (confidence: {f['confidence']})")
