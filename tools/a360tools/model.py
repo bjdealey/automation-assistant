@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
+from functools import cached_property
 from typing import Any, Callable, Iterator
 
 # --- Candidate key names (case-insensitive). Keep small to avoid false hits. ---
@@ -33,6 +35,10 @@ BOT_EXTENSIONS = (".bot", ".json")
 
 # A variable reference token hypothesis: $name$ (INFERRED — confirm from export).
 VAR_REF_RE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)\$")
+
+# The one absolute-path recogniser, shared by validate + dependencies (they had
+# drifted copies — validate's lacked the POSIX branch). Windows drive | UNC | POSIX.
+ABS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]|^\\\\[^\\]+\\|^/[^/ ]")
 
 
 class BotLoadError(Exception):
@@ -193,3 +199,102 @@ def classify_command(package: str | None, command: str | None) -> str:
     if any(w in blob for w in ("delay", "pause", "sleep", "wait")):
         return "wait"
     return "other"
+
+
+# --------------------------------- Bot model ---------------------------------
+
+class Bot:
+    """A parsed A360 bot: one raw JSON document with its derived collections
+    computed once and cached. The single deep seam the extractors read through —
+    construct with ``Bot.of(json)``, then read ``.packages`` / ``.actions`` /
+    ``.variables`` / ``.string_leaves`` / etc.
+
+    Schema-tolerant (an unrecognised document yields empty collections, never an
+    exception) and read-only (never mutates the raw document). Every collection
+    is deterministically ordered, matching the free ``extract`` functions that
+    now delegate here.
+    """
+
+    def __init__(self, raw: Any) -> None:
+        self.raw = raw
+
+    @classmethod
+    def of(cls, raw: Any) -> "Bot":
+        return cls(raw)
+
+    @cached_property
+    def dicts(self) -> list[tuple[str, dict]]:
+        """(json_path, dict) for every dict in the document, pre-order."""
+        return list(iter_dicts(self.raw))
+
+    @cached_property
+    def string_leaves(self) -> list[tuple[str, str | None, str]]:
+        """(json_path, parent_key, value) for every string leaf."""
+        return list(iter_strings(self.raw))
+
+    @cached_property
+    def action_nodes(self) -> list[tuple[str, dict]]:
+        """(json_path, dict) for every dict that looks like an action node."""
+        return [(p, d) for p, d in self.dicts if is_action_node(d)]
+
+    @cached_property
+    def packages(self) -> list[dict]:
+        """Declared packages as sorted [{name, version}] (version may be None)."""
+        out = []
+        for pkg in find_list_of_dicts(self.raw, PACKAGES_KEYS):
+            name = get_ci(pkg, *NAME_KEYS)
+            if not isinstance(name, str):
+                continue
+            version = get_ci(pkg, *VERSION_KEYS)
+            out.append({"name": name,
+                        "version": version if isinstance(version, str) else None})
+        seen = {}
+        for p in out:
+            seen[(p["name"], p["version"])] = p
+        return sorted(seen.values(), key=lambda p: (p["name"], p["version"] or ""))
+
+    @cached_property
+    def variables(self) -> list[dict]:
+        """Bot variables as sorted [{name, type, input, output}]."""
+        out = []
+        for var in find_list_of_dicts(self.raw, VARIABLES_KEYS):
+            name = get_ci(var, *NAME_KEYS)
+            if not isinstance(name, str):
+                continue
+            vtype = get_ci(var, *TYPE_KEYS)
+            out.append({
+                "name": name,
+                "type": vtype if isinstance(vtype, str) else None,
+                "input": bool(get_ci(var, "input", "isinput")),
+                "output": bool(get_ci(var, "output", "isoutput")),
+            })
+        seen = {}
+        for v in out:
+            seen[v["name"]] = v  # last definition wins; names should be unique
+        return sorted(seen.values(), key=lambda v: v["name"])
+
+    @cached_property
+    def actions(self) -> list[dict]:
+        """Every detected action node as sorted [{package, command, category}]."""
+        rows = []
+        for _, d in self.action_nodes:
+            pkg = node_package(d)
+            cmd = node_command(d)
+            rows.append({"package": pkg, "command": cmd,
+                         "category": classify_command(pkg, cmd)})
+        return sorted(rows, key=lambda r: (r["package"] or "", r["command"] or ""))
+
+    @cached_property
+    def action_usage(self) -> list[dict]:
+        """Aggregated action usage [{package, command, count}], count desc."""
+        counts = Counter((r["package"], r["command"]) for r in self.actions)
+        rows = [{"package": p, "command": c, "count": n} for (p, c), n in counts.items()]
+        return sorted(rows, key=lambda r: (-r["count"], r["package"] or "", r["command"] or ""))
+
+    @property
+    def variable_names(self) -> set[str]:
+        return {v["name"] for v in self.variables}
+
+    @cached_property
+    def depth(self) -> int:
+        return json_depth(self.raw)

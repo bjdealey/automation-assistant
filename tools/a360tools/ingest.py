@@ -21,7 +21,7 @@ import hashlib
 import json
 from typing import Any
 
-from . import crawl, extract, model
+from . import crawl, model
 
 METADATA_KEYS = ("metadata", "meta")
 SCHEMA_VERSION_KEYS = ("schemaversion", "version")
@@ -59,21 +59,21 @@ def _entry(target, kind, statement, structural, version, evidence, attested) -> 
     }
 
 
-def _entries(bot: Any, version: str | None, h: str, attested: bool) -> list[dict]:
+def _entries(b: model.Bot, version: str | None, h: str, attested: bool) -> list[dict]:
     """Proposed knowledge entries. Cites only structure — never attribute values,
     so secrets in the bot are never echoed into a proposed entry."""
     ev = f"bot {h}"
     entries: list[dict] = []
 
     # --- Structural facts: what the JSON schema looks like (CONFIRMABLE) ---
-    if isinstance(bot, dict):
-        keys = ", ".join(sorted(str(k) for k in bot.keys()))
+    if isinstance(b.raw, dict):
+        keys = ", ".join(sorted(str(k) for k in b.raw.keys()))
         entries.append(_entry(
             "schema", "envelope",
             f"Bot envelope has top-level keys: {keys}.",
             True, version, ev, attested))
 
-    packages = extract.extract_packages(bot)
+    packages = b.packages
     for p in packages:
         at = f" at version {p['version']}" if p["version"] else ""
         entries.append(_entry(
@@ -81,14 +81,14 @@ def _entries(bot: Any, version: str | None, h: str, attested: bool) -> list[dict
             f"Package `{p['name']}` present{at}.",
             True, version, ev, attested))
 
-    var_types = sorted({v["type"] for v in extract.extract_variables(bot) if v["type"]})
+    var_types = sorted({v["type"] for v in b.variables if v["type"]})
     for t in var_types:
         entries.append(_entry(
             "schema", "variable-type",
             f"Variable type `{t}` present.",
             True, version, ev, attested))
 
-    actions = sorted({(a["package"], a["command"]) for a in extract.extract_actions(bot)
+    actions = sorted({(a["package"], a["command"]) for a in b.actions
                       if a["package"] and a["command"]})
     for pkg, cmd in actions:
         entries.append(_entry(
@@ -169,7 +169,7 @@ def plan(bot: Any, *, attested: bool = False, ledger: dict | None = None,
         "version": version,
         "provenance": provenance,
         "idempotent_noop": noop,
-        "entries": [] if noop else _entries(bot, version, h, attested),
+        "entries": [] if noop else _entries(model.Bot.of(bot), version, h, attested),
         # first_seen is stamped when the line is written to the ledger, not here,
         # so plan() stays deterministic. No new line for an already-ingested bot.
         "ledger_line": None if noop else {

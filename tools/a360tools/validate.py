@@ -14,14 +14,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from . import extract, model
+from . import model
 
 _SEVERITY_RANK = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
 
 _SECRET_KEY_RE = re.compile(
     r"pass(word|wd)?|secret|api[_-]?key|access[_-]?key|client[_-]?secret|"
     r"auth|token|conn(ection)?[_-]?str", re.IGNORECASE)
-_ABS_PATH_RE = re.compile(r"""^[A-Za-z]:[\\/]|^\\\\[^\\]+\\""")
 
 # High-signal secret *formats* (kept deliberately narrow to avoid flagging uids).
 _FORMAT_DETECTORS = (
@@ -38,19 +37,20 @@ def _finding(sev, check, location, message, confidence):
 
 def validate_bot(bot: Any) -> dict:
     findings: list[dict] = []
+    b = model.Bot.of(bot)
 
     # 1. Was any structure recognised at all?
-    allx = extract.extract_all(bot)
-    if "note" in allx:
+    recognised = bool(b.packages or b.actions or b.variables)
+    if not recognised:
         findings.append(_finding(
             "MEDIUM", "structure", "$",
             "No packages/actions/variables recognised; the schema may differ from "
             "the heuristic model (knowledge/schema/a360-bot-json.md).", "LOW"))
 
-    var_names = extract.variable_names(bot)
+    var_names = b.variable_names
 
     # 2. Secret indicators by attribute name.
-    for path, d in model.iter_dicts(bot):
+    for path, d in b.dicts:
         pair = model.attribute_pair(d)
         if not pair:
             continue
@@ -66,7 +66,7 @@ def validate_bot(bot: Any) -> dict:
                     "and rotate if it is live. [value not shown]", "MEDIUM"))
 
     # 3. Secret indicators by value format.
-    for path, _key, val in model.iter_strings(bot):
+    for path, _key, val in b.string_leaves:
         for kind, rx in _FORMAT_DETECTORS:
             if rx.search(val):
                 findings.append(_finding(
@@ -77,7 +77,7 @@ def validate_bot(bot: Any) -> dict:
 
     # 4. Variable-reference sanity ($name$ tokens vs declared variables).
     referenced: dict[str, str] = {}
-    for path, _key, val in model.iter_strings(bot):
+    for path, _key, val in b.string_leaves:
         for tok in model.VAR_REF_RE.findall(val):
             referenced.setdefault(tok, path)
     if not referenced:
@@ -100,8 +100,8 @@ def validate_bot(bot: Any) -> dict:
 
     # 5. Hard-coded absolute paths (maintainability).
     seen_paths = set()
-    for path, _key, val in model.iter_strings(bot):
-        if _ABS_PATH_RE.search(val) and val not in seen_paths:
+    for path, _key, val in b.string_leaves:
+        if model.ABS_PATH_RE.search(val) and val not in seen_paths:
             seen_paths.add(val)
             findings.append(_finding(
                 "LOW", "hardcoded_path", path,
@@ -109,13 +109,12 @@ def validate_bot(bot: Any) -> dict:
                 "portability.", "MEDIUM"))
 
     # 6. Fixed waits (reliability/performance).
-    for path, d in model.iter_dicts(bot):
-        if model.is_action_node(d):
-            if model.classify_command(model.node_package(d), model.node_command(d)) == "wait":
-                findings.append(_finding(
-                    "LOW", "fixed_wait", path,
-                    "Fixed delay/wait detected; prefer waiting for a condition.",
-                    "LOW"))
+    for path, d in b.action_nodes:
+        if model.classify_command(model.node_package(d), model.node_command(d)) == "wait":
+            findings.append(_finding(
+                "LOW", "fixed_wait", path,
+                "Fixed delay/wait detected; prefer waiting for a condition.",
+                "LOW"))
 
     findings.sort(key=lambda f: (_SEVERITY_RANK.get(f["severity"], 9),
                                  f["check"], f["location"]))
@@ -126,7 +125,7 @@ def validate_bot(bot: Any) -> dict:
 
     return {
         "json_parse": "OK",  # reaching here means it parsed
-        "recognised": "note" not in allx,
+        "recognised": recognised,
         "summary": summary,
         "findings": findings,
         "_disclaimer": "Heuristic report against an INFERRED schema. Treat as a "

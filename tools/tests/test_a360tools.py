@@ -69,6 +69,50 @@ def test_extract_all_note_when_unrecognised():
     assert result["action_count"] == 0
 
 
+# ------------------------------- model / Bot -------------------------------
+
+def test_classify_command_categories():
+    cc = model.classify_command
+    assert cc("Loop", "Loop") == "loop"
+    assert cc(None, "forEach") == "loop"
+    assert cc(None, "while") == "loop"
+    assert cc("TaskBot", "runTask") == "runtask"
+    assert cc(None, "runBot") == "runtask"
+    assert cc("TryCatch", "try") == "error"       # untested branch before now
+    assert cc(None, "finally") == "error"
+    assert cc("IF", "if") == "conditional"
+    assert cc(None, "elseIf") == "conditional"
+    assert cc("Delay", "delay") == "wait"
+    assert cc(None, "sleep") == "wait"
+    assert cc("Excel", "Open") == "other"         # untested branch before now
+    assert cc(None, None) == "other"
+
+
+def test_bot_tolerant_of_unknown_shape():
+    b = model.Bot.of({"totally": "unrelated"})     # must not raise
+    assert b.packages == [] and b.variables == [] and b.actions == []
+    assert b.action_usage == [] and b.action_nodes == []
+    assert b.string_leaves                          # the one string leaf is found
+    assert b.depth >= 1
+
+
+def test_bot_does_not_mutate_input(bot):
+    before = copy.deepcopy(bot)
+    b = model.Bot.of(bot)
+    _ = (b.packages, b.variables, b.actions, b.action_usage,
+         b.string_leaves, b.dicts, b.action_nodes, b.depth, b.variable_names)
+    assert bot == before
+
+
+def test_validate_flags_posix_absolute_path():
+    # Regression lock on the drifted _ABS_PATH_RE: validate must flag POSIX paths
+    # (its old regex only matched Windows/UNC, so /mnt/... slipped through).
+    bot = {"nodes": [{"packageName": "X", "commandName": "y",
+                      "attributes": [{"name": "path", "value": "/mnt/data/in.csv"}]}]}
+    findings = validate.validate_bot(bot)["findings"]
+    assert any(f["check"] == "hardcoded_path" for f in findings)
+
+
 # ------------------------------ dependencies ------------------------------
 
 def test_dependencies(bot):
