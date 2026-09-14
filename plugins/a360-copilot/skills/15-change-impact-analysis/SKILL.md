@@ -19,7 +19,7 @@ description: Assess the blast radius and risk of a proposed change to an A360 bo
 1. **Define the change** precisely (what will differ). If you have both
    versions, get the structural diff:
    ```bash
-   cd tools
+   cd "${CLAUDE_PLUGIN_ROOT}/scripts" 2>/dev/null || cd tools   # installed plugin, else this repo
    python -m a360tools diff <old_bot> <new_bot>
    ```
 2. **Map dependencies** (`11-dependency-analysis`), especially the **reverse**

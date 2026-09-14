@@ -24,7 +24,7 @@ description: Find performance and efficiency problems in an A360 bot — unneces
 ## Objective signals
 
 ```bash
-cd tools
+cd "${CLAUDE_PLUGIN_ROOT}/scripts" 2>/dev/null || cd tools   # installed plugin, else this repo
 python -m a360tools complexity <bot_file>   # node count, nesting depth, loops, etc.
 ```
 

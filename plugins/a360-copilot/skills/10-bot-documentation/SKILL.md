@@ -26,7 +26,7 @@ with inferred parts labelled.
 ## Generate the raw facts deterministically
 
 ```bash
-cd tools
+cd "${CLAUDE_PLUGIN_ROOT}/scripts" 2>/dev/null || cd tools   # installed plugin, else this repo
 python -m a360tools extract    <bot_file>
 python -m a360tools deps       <bot_file>
 python -m a360tools complexity <bot_file>

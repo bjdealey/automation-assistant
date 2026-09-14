@@ -28,7 +28,7 @@ description: Audit an A360 bot for security issues — hard-coded credentials an
 ## Deterministic assist (signal, not proof)
 
 ```bash
-cd tools
+cd "${CLAUDE_PLUGIN_ROOT}/scripts" 2>/dev/null || cd tools   # installed plugin, else this repo
 python -m a360tools validate <bot_file>   # includes hard-coded-secret heuristics
 ```
 

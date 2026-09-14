@@ -23,7 +23,7 @@ BOT → SUB-BOT → ACTION → PACKAGE → VARIABLE → APPLICATION → FILE
 ## Method
 
 ```bash
-cd tools
+cd "${CLAUDE_PLUGIN_ROOT}/scripts" 2>/dev/null || cd tools   # installed plugin, else this repo
 python -m a360tools deps <bot_file>            # edges for one bot
 python -m a360tools inventory <corpus> --json  # cross-bot package/usage view
 ```
