@@ -12,20 +12,29 @@ from typing import Any
 from . import extract
 
 
-def _pkg_key(p: dict) -> tuple:
-    return (p["name"], p["version"])
+def _versions_by_name(pkgs: list[dict]) -> dict[str, list]:
+    """name -> sorted, de-duplicated list of the versions seen for it.
+
+    ``extract_packages`` de-dups on (name, version), so one name can legitimately
+    carry several versions. Group them, rather than letting a name-keyed dict
+    silently drop all but the last.
+    """
+    m: dict[str, set] = {}
+    for p in pkgs:
+        m.setdefault(p["name"], set()).add(p["version"])
+    return {n: sorted(vs, key=lambda v: v or "") for n, vs in m.items()}
 
 
 def diff_bots(old: Any, new: Any) -> dict:
-    old_pkgs = {p["name"]: p for p in extract.extract_packages(old)}
-    new_pkgs = {p["name"]: p for p in extract.extract_packages(new)}
+    old_pkgs = _versions_by_name(extract.extract_packages(old))
+    new_pkgs = _versions_by_name(extract.extract_packages(new))
     pkg_added = sorted(set(new_pkgs) - set(old_pkgs))
     pkg_removed = sorted(set(old_pkgs) - set(new_pkgs))
     pkg_version_changed = sorted(
         (
-            {"name": n, "old": old_pkgs[n]["version"], "new": new_pkgs[n]["version"]}
+            {"name": n, "old": old_pkgs[n], "new": new_pkgs[n]}
             for n in set(old_pkgs) & set(new_pkgs)
-            if old_pkgs[n]["version"] != new_pkgs[n]["version"]
+            if old_pkgs[n] != new_pkgs[n]
         ),
         key=lambda r: r["name"],
     )

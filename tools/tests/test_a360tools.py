@@ -181,6 +181,25 @@ def test_diff_identical_is_no_change(bot):
     assert diff.diff_bots(bot, copy.deepcopy(bot))["changed"] is False
 
 
+def test_diff_package_version_change():
+    old = {"packages": [{"name": "Excel", "version": "3.2.0"}]}
+    new = {"packages": [{"name": "Excel", "version": "4.0.0"}]}
+    vc = diff.diff_bots(old, new)["packages"]["version_changed"]
+    assert len(vc) == 1 and vc[0]["name"] == "Excel"
+    assert vc[0]["old"] == ["3.2.0"] and vc[0]["new"] == ["4.0.0"]
+
+
+def test_diff_package_multiversion_not_collapsed():
+    # one name at two versions in a single bot must not collapse to the last one
+    old = {"packages": [{"name": "Excel", "version": "3.2.0"},
+                        {"name": "Excel", "version": "4.0.0"}]}
+    new = {"packages": [{"name": "Excel", "version": "3.2.0"}]}
+    vc = diff.diff_bots(old, new)["packages"]["version_changed"]
+    assert len(vc) == 1
+    assert vc[0]["old"] == ["3.2.0", "4.0.0"]   # both versions preserved
+    assert vc[0]["new"] == ["3.2.0"]
+
+
 # -------------------------------- crawl/inv --------------------------------
 
 def test_crawl_finds_fixture():
