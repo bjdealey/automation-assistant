@@ -35,7 +35,7 @@ presented or used.
 ## Deterministic assist
 
 ```bash
-cd tools
+cd "${CLAUDE_PLUGIN_ROOT}/scripts" 2>/dev/null || cd tools   # installed plugin, else this repo
 python -m a360tools validate <bot_file>        # heuristic structural report
 ```
 

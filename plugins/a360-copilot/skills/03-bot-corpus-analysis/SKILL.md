@@ -32,7 +32,7 @@ commit gate, the audit trail, and the rollback — **nothing here auto-commits**
 Run from `tools/`. Pass the ledger so an already-ingested bot is a no-op.
 
 ```bash
-cd tools
+cd "${CLAUDE_PLUGIN_ROOT}/scripts" 2>/dev/null || cd tools   # installed plugin, else this repo
 # single bot
 python -m a360tools ingest-plan <bot.json> --ledger ../knowledge/bots/_ingested.json
 # whole corpus folder
@@ -130,7 +130,7 @@ The apply step, the attestation prompt, and the commit gate are agent behaviour
 with no unit seam — verify them by hand:
 
 ```bash
-cd tools
+cd "${CLAUDE_PLUGIN_ROOT}/scripts" 2>/dev/null || cd tools   # installed plugin, else this repo
 python -m a360tools ingest-plan tests/fixtures/hypothesis_bot.json
 ```
 

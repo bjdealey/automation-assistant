@@ -51,8 +51,10 @@ verdict waits on ground truth · `pending` = needs an asset not bundled here
 - **Schema is `INFERRED`.** A360 bot-JSON structure has not been validated
   against a real export, so generation (05) and validity verdicts (06) are
   **draft-only** and always labelled unverified.
-- **Deterministic `a360tools` utilities are not bundled here.** They live in the
-  source repo (`tools/`) and are optional; the skills function as methodologies
-  without them. Bundling them into the plugin is a planned follow-up.
+- **Deterministic `a360tools` utilities ship with this plugin** under
+  `scripts/a360tools/` (standard library only, no dependencies). Skills that use
+  them run `cd "${CLAUDE_PLUGIN_ROOT}/scripts"` first, then
+  `python -m a360tools <command>`. They are read-only signals; the skills still
+  work as methodologies if you prefer not to run them.
 
 See the source repo's `CLAUDE.md` for the full operating model.

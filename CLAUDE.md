@@ -91,9 +91,10 @@ automation-assistant/
 ├── README.md                  ← human-facing overview
 ├── .claude-plugin/marketplace.json  ← plugin marketplace manifest
 ├── plugins/
-│   └── a360-copilot/           ← the distributable plugin (canonical skills)
+│   └── a360-copilot/           ← the distributable plugin (canonical skills + tools)
 │       ├── .claude-plugin/plugin.json
 │       ├── README.md
+│       ├── scripts/a360tools/  ← the a360tools package (canonical home; ships with the plugin)
 │       └── skills/01-…/SKILL.md … 15-…/SKILL.md
 ├── .claude/
 │   ├── skills/                 ← 01–15 SYMLINK into the plugin; grill-me/grilling local
@@ -109,7 +110,7 @@ automation-assistant/
 │   ├── bots/                  ← per-bot analysis notes + the corpus
 │   └── troubleshooting/       ← diagnosed failures + resolutions
 └── tools/                     ← deterministic Python utilities (a360tools)
-    ├── a360tools/             ← the package
+    ├── a360tools/             ← SYMLINK into plugins/a360-copilot/scripts/a360tools
     └── tests/                 ← unit tests + a synthetic fixture
 ```
 
@@ -192,7 +193,9 @@ available (Control Room UI access, a bot corpus, or a `CONFIRMED` schema).
 ## 5. Using the Python tools
 
 The `a360tools` package provides deterministic, read-only corpus analysis plus a
-JSON normaliser. From `tools/`:
+JSON normaliser. It is bundled with the plugin (see §7); run it from wherever the
+package lives — in this repo `cd tools`, from an installed plugin
+`cd "${CLAUDE_PLUGIN_ROOT}/scripts"` — then:
 
 ```bash
 python -m a360tools crawl      <corpus_dir>          # find .bot/.json files
@@ -250,5 +253,9 @@ This repo is itself a **plugin marketplace**; the A360 skills ship as the
   `/a360-copilot:08-bot-review`); model-invocable ones also auto-activate.
 - Validate locally: `claude plugin validate ./plugins/a360-copilot --strict`
   and `claude plugin validate . --strict` (the marketplace).
-- `a360tools` is **not** bundled in the plugin yet — it lives in `tools/` here;
-  skills function as methodologies without it. Bundling it is a planned follow-up.
+- `a360tools` **is** bundled with the plugin. Its canonical home is
+  `plugins/a360-copilot/scripts/a360tools/`, so it ships when the plugin is
+  installed; `tools/a360tools` is a symlink to it (one source of truth, mirroring
+  the skills). Skills invoke it via
+  `cd "${CLAUDE_PLUGIN_ROOT}/scripts" 2>/dev/null || cd tools` so the command
+  resolves both from an installed plugin and in this repo.
