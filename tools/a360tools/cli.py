@@ -12,8 +12,8 @@ import argparse
 import json
 import sys
 
-from . import (complexity, crawl, dependencies, diff, extract, inventory,
-               model, validate)
+from . import (complexity, crawl, dependencies, diff, extract, ingest,
+               inventory, model, validate)
 
 
 def _emit(obj, as_json: bool, renderer) -> None:
@@ -111,6 +111,15 @@ def _r_diff(d):
         print(f"  {sign}{a['delta']}  {a['package']} :: {a['command']}")
 
 
+def _r_ingest_plan(p):
+    print(f"bot: {p['name'] or '(unnamed)'}   version: {p['version'] or '?'}")
+    print(f"hash: {p['hash']}")
+    print(f"provenance: {p['provenance']}   idempotent_noop: {p['idempotent_noop']}")
+    print(f"\nproposed entries ({len(p['entries'])}):")
+    for e in p["entries"]:
+        print(f"  [{e['confidence']:<9}] {e['target']}/{e['kind']}: {e['statement']}")
+
+
 def _r_validate(rep):
     s = rep["summary"]
     print(f"json_parse: {rep['json_parse']}   recognised: {rep['recognised']}")
@@ -150,6 +159,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("file")
     sp.add_argument("-o", "--output", help="write to file instead of stdout")
 
+    sp = sub.add_parser("ingest-plan",
+                        help="propose knowledge/ entries for one bot (read-only)")
+    sp.add_argument("file")
+    sp.add_argument("--attested-export", action="store_true",
+                    help="attest this is a genuine Control Room export (allows CONFIRMED)")
+
     return p
 
 
@@ -171,9 +186,13 @@ def main(argv=None) -> int:
         _emit(validate.validate_bot(_load(args.file)), as_json, _r_validate)
     elif args.command == "diff":
         _emit(diff.diff_bots(_load(args.old), _load(args.new)), as_json, _r_diff)
+    elif args.command == "ingest-plan":
+        plan = ingest.plan(_load(args.file), attested=args.attested_export,
+                           source=args.file)
+        _emit(plan, as_json, _r_ingest_plan)
     elif args.command == "normalize":
         data = _load(args.file)
-        text = json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True)
+        text = model.normalized_json(data)
         # round-trip validation: the normalised text must parse back equal.
         if json.loads(text) != data:  # pragma: no cover - defensive
             print("error: normalisation changed the data", file=sys.stderr)

@@ -53,6 +53,16 @@ def load_bot(path: str) -> dict:
     return data
 
 
+def normalized_json(bot: Any) -> str:
+    """Canonical, stable JSON text for a bot: sorted keys, 2-space indent.
+
+    The single source of normalisation, shared by the ``normalize`` command and
+    by ingest hashing, so identical bots always produce identical bytes
+    regardless of original key order or whitespace.
+    """
+    return json.dumps(bot, indent=2, ensure_ascii=False, sort_keys=True)
+
+
 # ----------------------------- case-insensitive get -----------------------------
 
 def get_ci(d: dict, *candidates: str) -> Any:
