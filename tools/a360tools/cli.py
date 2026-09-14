@@ -115,6 +115,9 @@ def _r_ingest_plan(p):
     print(f"bot: {p['name'] or '(unnamed)'}   version: {p['version'] or '?'}")
     print(f"hash: {p['hash']}")
     print(f"provenance: {p['provenance']}   idempotent_noop: {p['idempotent_noop']}")
+    if p["idempotent_noop"]:
+        print("already ingested (hash in ledger); nothing to propose.")
+        return
     print(f"\nproposed entries ({len(p['entries'])}):")
     for e in p["entries"]:
         print(f"  [{e['confidence']:<9}] {e['target']}/{e['kind']}: {e['statement']}")
@@ -164,6 +167,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("file")
     sp.add_argument("--attested-export", action="store_true",
                     help="attest this is a genuine Control Room export (allows CONFIRMED)")
+    sp.add_argument("--ledger",
+                    help="ingest ledger JSON; an already-recorded bot is a no-op")
 
     return p
 
@@ -187,8 +192,9 @@ def main(argv=None) -> int:
     elif args.command == "diff":
         _emit(diff.diff_bots(_load(args.old), _load(args.new)), as_json, _r_diff)
     elif args.command == "ingest-plan":
+        ledger = ingest.load_ledger(args.ledger) if args.ledger else None
         plan = ingest.plan(_load(args.file), attested=args.attested_export,
-                           source=args.file)
+                           ledger=ledger, source=args.file)
         _emit(plan, as_json, _r_ingest_plan)
     elif args.command == "normalize":
         data = _load(args.file)

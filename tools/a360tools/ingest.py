@@ -18,6 +18,7 @@ never raises on an unfamiliar document.
 from __future__ import annotations
 
 import hashlib
+import json
 from typing import Any
 
 from . import extract, model
@@ -105,27 +106,42 @@ def _entries(bot: Any, version: str | None, h: str, attested: bool) -> list[dict
     return entries
 
 
+def load_ledger(path: str) -> dict:
+    """Read the ingest ledger (hash -> record) from ``path``; ``{}`` when absent.
+
+    Read-only, like the rest of the package. A missing or malformed ledger reads
+    as empty so a first ingest just works.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (FileNotFoundError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def plan(bot: Any, *, attested: bool = False, ledger: dict | None = None,
          source: str | None = None) -> dict:
     """Compute the ingest plan for one bot. Deterministic and read-only.
 
-    ``ledger`` is accepted now for a stable signature; ledger-based idempotency
-    (the ``idempotent_noop`` short-circuit) is wired by a later ticket.
+    ``ledger`` maps a bot ``hash`` to its record (see ``load_ledger``). When this
+    bot's hash is already present the plan is an idempotent no-op: it proposes no
+    entries and no ledger line, so re-ingesting the same bot changes nothing.
     """
-    del ledger  # idempotency lands in ticket #5; signature fixed here.
     h = bot_hash(bot)
     name, version = _identity(bot)
     provenance = "attested-export" if attested else "observed"
+    noop = bool(ledger) and h in ledger
     return {
         "hash": h,
         "name": name,
         "version": version,
         "provenance": provenance,
-        "idempotent_noop": False,
-        "entries": _entries(bot, version, h, attested),
+        "idempotent_noop": noop,
+        "entries": [] if noop else _entries(bot, version, h, attested),
         # first_seen is stamped when the line is written to the ledger, not here,
-        # so plan() stays deterministic.
-        "ledger_line": {
+        # so plan() stays deterministic. No new line for an already-ingested bot.
+        "ledger_line": None if noop else {
             "hash": h,
             "name": name,
             "version": version,
