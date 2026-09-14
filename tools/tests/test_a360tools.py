@@ -233,6 +233,14 @@ def test_cli_extract_json(capsys):
     assert out["action_count"] == 7
 
 
+def test_cli_json_after_subcommand(capsys):
+    # --json is accepted AFTER the subcommand too, not only before it.
+    rc = cli.main(["extract", SAMPLE, "--json"])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["action_count"] == 7
+
+
 def test_cli_validate_text_runs(capsys):
     rc = cli.main(["validate", SAMPLE])
     assert rc == 0

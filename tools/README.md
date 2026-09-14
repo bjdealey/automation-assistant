@@ -23,7 +23,7 @@ python -m a360tools diff       <old> <new>        # structural diff (packages/va
 python -m a360tools normalize  <bot_file> [-o f]  # stable sorted JSON (round-trip checked)
 ```
 
-Add `--json` (before the subcommand) for full machine-readable output, e.g.:
+Add `--json` (before or after the subcommand) for full machine-readable output, e.g.:
 
 ```bash
 python -m a360tools --json inventory ../knowledge/bots/corpus
