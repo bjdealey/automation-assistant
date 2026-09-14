@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Iterable
+from typing import Any, Iterable
 
 from . import model
 
@@ -43,3 +43,25 @@ def find_bot_files(root: str, extensions: Iterable[str] = model.BOT_EXTENSIONS
             "ext": ext.lower(),
         })
     return sorted(results, key=lambda r: r["path"])
+
+
+def load_bot_files(root: str) -> tuple[list[tuple[dict, Any]], list[dict]]:
+    """Discover and parse every bot file under ``root`` (or a single file).
+
+    Returns ``(loaded, errors)``: ``loaded`` is [(file_row, parsed_bot)] for each
+    file that parsed; ``errors`` is [{"path", "error"}] for each that did not. One
+    unreadable file never aborts the walk. Order follows ``find_bot_files``.
+
+    The single corpus-loading seam, shared by ``inventory`` and
+    ``ingest.plan_corpus`` so the load-error policy lives in one place.
+    """
+    loaded: list[tuple[dict, Any]] = []
+    errors: list[dict] = []
+    for f in find_bot_files(root):
+        try:
+            data = model.load_bot(f["path"])
+        except model.BotLoadError as exc:
+            errors.append({"path": f["path"], "error": str(exc)})
+            continue
+        loaded.append((f, data))
+    return loaded, errors

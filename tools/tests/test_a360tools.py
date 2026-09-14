@@ -209,6 +209,14 @@ def test_crawl_finds_fixture():
     assert "_invalid.bot" in rels
 
 
+def test_crawl_load_bot_files_splits_loaded_and_errors():
+    loaded, errors = crawl.load_bot_files(FIXTURES)
+    assert len(loaded) == 1 and len(errors) == 1     # one good, one _invalid.bot
+    f, data = loaded[0]
+    assert f["relpath"] == "hypothesis_bot.json" and isinstance(data, dict)
+    assert errors[0]["path"].endswith("_invalid.bot")
+
+
 def test_inventory_handles_good_and_bad():
     inv = inventory.inventory(FIXTURES)
     assert inv["aggregate"]["bot_count"] >= 1
