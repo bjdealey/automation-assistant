@@ -280,6 +280,52 @@ def test_load_ledger_missing_returns_empty(tmp_path):
     assert ingest.load_ledger(str(tmp_path / "nope.json")) == {}
 
 
+def test_ingest_corpus_one_plan_per_bot_skips_ledgered(tmp_path, bot):
+    (tmp_path / "a.json").write_text(json.dumps(bot))               # hash in ledger
+    (tmp_path / "b.json").write_text(json.dumps({**bot, "_variant": 1}))  # new bot
+    ledger = {ingest.bot_hash(bot): {"name": "x", "version": "2",
+              "provenance": "observed", "first_seen": "2026-01-01", "source": "a"}}
+    result = ingest.plan_corpus(str(tmp_path), ledger=ledger)
+    assert len(result["plans"]) == 2                    # one plan per discovered bot
+    noop = [p for p in result["plans"] if p["idempotent_noop"]]
+    new = [p for p in result["plans"] if not p["idempotent_noop"]]
+    assert len(noop) == 1 and noop[0]["entries"] == []  # ledgered bot proposes nothing
+    assert len(new) == 1 and new[0]["entries"]          # new bot proposes entries
+
+
+def test_ingest_corpus_dedups_identical_bots_within_run(tmp_path, bot):
+    (tmp_path / "a.json").write_text(json.dumps(bot))
+    (tmp_path / "copy.json").write_text(json.dumps(bot))   # same content, same hash
+    result = ingest.plan_corpus(str(tmp_path))             # empty ledger
+    assert len(result["plans"]) == 2
+    noops = [p for p in result["plans"] if p["idempotent_noop"]]
+    assert len(noops) == 1                                 # 2nd identical file is a no-op
+
+
+def test_ingest_corpus_collects_load_errors(tmp_path, bot):
+    (tmp_path / "ok.json").write_text(json.dumps(bot))
+    (tmp_path / "bad.bot").write_text("{not json")
+    result = ingest.plan_corpus(str(tmp_path))
+    assert len(result["plans"]) == 1
+    assert len(result["errors"]) == 1
+
+
+def test_ingest_corpus_does_not_mutate_caller_ledger(tmp_path, bot):
+    (tmp_path / "a.json").write_text(json.dumps(bot))
+    ledger: dict = {}
+    ingest.plan_corpus(str(tmp_path), ledger=ledger)
+    assert ledger == {}                                    # caller's ledger untouched
+
+
+def test_cli_ingest_corpus_json(tmp_path, bot, capsys):
+    (tmp_path / "a.json").write_text(json.dumps(bot))
+    rc = cli.main(["--json", "ingest-corpus", str(tmp_path)])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert len(out["plans"]) == 1
+    assert out["plans"][0]["entries"]
+
+
 def test_cli_ingest_plan_json(capsys):
     rc = cli.main(["--json", "ingest-plan", SAMPLE])
     assert rc == 0
