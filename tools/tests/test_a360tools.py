@@ -12,7 +12,7 @@ import os
 import pytest
 
 from a360tools import (complexity, crawl, dependencies, diff, extract,
-                       inventory, model, validate)
+                       ingest, inventory, model, validate)
 from a360tools import cli
 
 HERE = os.path.dirname(__file__)
@@ -178,3 +178,88 @@ def test_cli_bad_file_exits_2():
     with pytest.raises(SystemExit) as exc:
         cli.main(["extract", os.path.join(FIXTURES, "_invalid.bot")])
     assert exc.value.code == 2
+
+
+# --------------------------------- ingest ---------------------------------
+
+def test_ingest_hash_stable_across_formatting(bot):
+    h1 = ingest.bot_hash(bot)
+    reordered = {k: bot[k] for k in reversed(list(bot.keys()))}  # same data, new order
+    h2 = ingest.bot_hash(reordered)
+    assert h1 == h2
+    assert len(h1) == 64  # sha256 hex digest
+
+
+def test_ingest_identity(bot):
+    p = ingest.plan(bot)
+    assert p["name"] == "SampleInvoiceBot"
+    assert p["version"] == "2"          # metadata.schemaVersion
+    assert p["hash"] == ingest.bot_hash(bot)
+
+
+def test_ingest_default_all_observed(bot):
+    p = ingest.plan(bot)
+    assert p["provenance"] == "observed"
+    assert p["entries"]
+    assert all(e["confidence"] == "OBSERVED" for e in p["entries"])
+
+
+def test_ingest_attested_confirms_only_structural(bot):
+    p = ingest.plan(bot, attested=True)
+    assert p["provenance"] == "attested-export"
+    structural = [e for e in p["entries"] if e["structural"]]
+    observational = [e for e in p["entries"] if not e["structural"]]
+    assert structural and observational   # the fixture yields both kinds
+    assert all(e["confidence"] == "CONFIRMED" for e in structural)
+    assert all(e["confidence"] == "OBSERVED" for e in observational)
+
+
+def test_ingest_entries_carry_version_and_hash_evidence(bot):
+    p = ingest.plan(bot)
+    for e in p["entries"]:
+        assert e["version"] == "2"
+        assert p["hash"] in e["evidence"]
+
+
+def test_ingest_proposes_package_variable_action_facts(bot):
+    statements = [e["statement"] for e in ingest.plan(bot)["entries"]]
+    assert any("Excel" in s and "3.2.0" in s for s in statements)
+    assert any("Excel.Open" in s for s in statements)
+    assert any("CREDENTIAL" in s for s in statements)
+
+
+def test_ingest_never_leaks_secret_value(bot):
+    p = ingest.plan(bot, attested=True)
+    assert "hunter2SuperSecret" not in json.dumps(p)
+
+
+def test_ingest_ledger_line_shape(bot):
+    p = ingest.plan(bot, source="corpus/sample.json")
+    line = p["ledger_line"]
+    assert line["hash"] == p["hash"]
+    assert line["name"] == "SampleInvoiceBot"
+    assert line["version"] == "2"
+    assert line["provenance"] == "observed"
+    assert line["source"] == "corpus/sample.json"
+
+
+def test_ingest_plan_is_read_only(bot):
+    before = copy.deepcopy(bot)
+    ingest.plan(bot, attested=True)
+    assert bot == before
+
+
+def test_cli_ingest_plan_json(capsys):
+    rc = cli.main(["--json", "ingest-plan", SAMPLE])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["name"] == "SampleInvoiceBot"
+    assert out["entries"]
+
+
+def test_cli_ingest_plan_attested_flag(capsys):
+    rc = cli.main(["--json", "ingest-plan", SAMPLE, "--attested-export"])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["provenance"] == "attested-export"
+    assert any(e["confidence"] == "CONFIRMED" for e in out["entries"])
