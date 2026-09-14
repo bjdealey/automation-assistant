@@ -176,10 +176,16 @@ available (Control Room UI access, a bot corpus, or a `CONFIRMED` schema).
 - The canonical working model of the bot JSON schema lives in
   `knowledge/schema/a360-bot-json.md`. **It is INFERRED until validated against
   the user's environment.** Correct it from real exports.
-- **Ground-truth-first.** The first real bot JSON provided — a paste counts, a
-  Control Room export is better — is the trigger to promote the schema from
-  `INFERRED`→`CONFIRMED` (citing that sample as evidence), then to tighten the
-  `a360tools` extractors and add a real test fixture beside the hypothesis one.
+- **Ground-truth-first.** The first real bot JSON provided is the trigger to
+  firm up the schema — but *how far* depends on provenance, not on paste-count
+  (see `docs/adr/0001-ingest-confirms-only-attested-exports.md`). A pasted or
+  corpus bot promotes the facts it evidences to `OBSERVED`. `CONFIRMED` is
+  reached only when the engineer **attests** the JSON is a genuine Control Room
+  export, and only for the structural facts that export directly evidences;
+  accumulating `OBSERVED` never becomes `CONFIRMED` on its own (the tags are
+  parallel sources, not a ladder — see `CONTEXT.md`). Either way, use that first
+  sample to tighten the `a360tools` extractors and add a real test fixture
+  beside the hypothesis one.
 
 ---
 
