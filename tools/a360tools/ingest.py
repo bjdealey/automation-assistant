@@ -121,14 +121,9 @@ def plan_corpus(root: str, *, attested: bool = False,
     # run so identical files later in the corpus collapse to no-ops too.
     seen = dict(ledger) if ledger else {}
     plans: list[dict] = []
-    errors: list[dict] = []
 
-    for f in crawl.find_bot_files(root):
-        try:
-            bot = model.load_bot(f["path"])
-        except model.BotLoadError as exc:
-            errors.append({"path": f["path"], "error": str(exc)})
-            continue
+    loaded, errors = crawl.load_bot_files(root)
+    for f, bot in loaded:
         p = plan(bot, attested=attested, ledger=seen, source=f["path"])
         if not p["idempotent_noop"]:
             seen[p["hash"]] = p["ledger_line"]

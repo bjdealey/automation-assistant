@@ -4,24 +4,17 @@ from __future__ import annotations
 
 from collections import Counter
 
-from . import complexity, crawl, extract, model
+from . import complexity, crawl, extract
 
 
 def inventory(root: str) -> dict:
     """Per-bot summaries plus an aggregate view for a folder (or single file)."""
-    files = crawl.find_bot_files(root)
+    loaded, errors = crawl.load_bot_files(root)
     bots = []
-    errors = []
     pkg_counter: Counter = Counter()
     cmd_counter: Counter = Counter()
 
-    for f in files:
-        try:
-            data = model.load_bot(f["path"])
-        except model.BotLoadError as exc:
-            errors.append({"path": f["path"], "error": str(exc)})
-            continue
-
+    for f, data in loaded:
         pkgs = extract.extract_packages(data)
         usage = extract.action_usage(data)
         variables = extract.extract_variables(data)
