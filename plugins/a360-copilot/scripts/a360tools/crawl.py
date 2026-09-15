@@ -3,18 +3,44 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Iterable
+from typing import Any
 
 from . import model
 
 
-def find_bot_files(root: str, extensions: Iterable[str] = model.BOT_EXTENSIONS
-                   ) -> list[dict]:
+def _accept_walked(path: str) -> bool:
+    """Should a walked file be treated as a candidate bot?
+
+    Real Control Room exports store taskbots as **extensionless** files and ship
+    a ``manifest.json`` that is *not* a bot, so neither presence nor absence of an
+    extension is decisive — content is. Rules:
+
+    * ``.bot`` — always a candidate (surfaced even if malformed, so
+      ``load_bot_files`` can report the parse error).
+    * ``.json`` or no extension — candidate only if it parses and looks like a
+      bot; this admits extensionless taskbots and rejects ``manifest.json`` and
+      stray JSON.
+    * any other extension — never a candidate (PNGs, spreadsheets, …).
+    """
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".bot":
+        return True
+    if ext not in ("", ".json"):
+        return False
+    try:
+        return model.looks_like_bot(model.load_bot(path))
+    except model.BotLoadError:
+        return False
+
+
+def find_bot_files(root: str) -> list[dict]:
     """Recursively list candidate bot files under ``root``.
 
-    Returns sorted [{path, relpath, size, ext}]. A single file path is allowed.
+    Returns sorted [{path, relpath, size, ext}]. A single file path is allowed
+    (and is accepted as-is — an explicitly named file is never content-gated).
+    Directory discovery admits extensionless taskbots and excludes the export
+    ``manifest.json``; see ``_accept_walked``.
     """
-    exts = tuple(e.lower() for e in extensions)
     results = []
 
     if os.path.isfile(root):
@@ -27,8 +53,9 @@ def find_bot_files(root: str, extensions: Iterable[str] = model.BOT_EXTENSIONS
             # deterministic traversal; skip hidden/VCS dirs
             dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
             for fn in sorted(filenames):
-                if fn.lower().endswith(exts):
-                    candidates.append(os.path.join(dirpath, fn))
+                path = os.path.join(dirpath, fn)
+                if _accept_walked(path):
+                    candidates.append(path)
 
     for path in candidates:
         try:

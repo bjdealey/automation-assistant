@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from urllib.parse import unquote
 
 from . import model
 
@@ -26,10 +27,24 @@ _CRED_HINT_RE = re.compile(r"credential|locker|vault", re.IGNORECASE)
 
 
 def sub_bots(b: model.Bot) -> list[dict]:
-    """Candidate sub-bot references: any string ending in .bot."""
+    """Candidate sub-bot references.
+
+    Two reference styles are recognised:
+
+    * A ``repository://`` path — how a real A360 ``TaskBot: runTask`` node stores
+      the called bot (in the ``taskbotFile`` attribute), URL-encoded. CONFIRMED
+      against a real Control Room export.
+    * A string ending in ``.bot`` — the plain-path style.
+
+    ``repository://`` references are URL-decoded so they match the bot's stored
+    path (e.g. the export manifest / other bots' paths) for graph building.
+    """
     found = {}
     for path, _key, val in b.string_leaves:
-        if val.lower().endswith(".bot"):
+        low = val.lower()
+        if low.startswith("repository://"):
+            found.setdefault(unquote(val), path)
+        elif low.endswith(".bot"):
             found.setdefault(val, path)
     return sorted(
         ({"reference": ref, "at": at} for ref, at in found.items()),

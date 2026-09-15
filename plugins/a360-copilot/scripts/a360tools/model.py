@@ -23,6 +23,7 @@ from typing import Any, Callable, Iterator
 # --- Candidate key names (case-insensitive). Keep small to avoid false hits. ---
 PACKAGE_KEYS = ("packagename", "package")
 COMMAND_KEYS = ("commandname", "command")
+NODES_KEYS = ("nodes", "commands", "childnodes")
 VARIABLES_KEYS = ("variables", "variableslist", "botvariables")
 PACKAGES_KEYS = ("packages", "packagelist", "importedpackages")
 NAME_KEYS = ("name", "variablename")
@@ -30,11 +31,18 @@ TYPE_KEYS = ("type", "variabletype", "vartype")
 VERSION_KEYS = ("version",)
 VALUE_KEYS = ("value", "input", "defaultvalue", "default")
 
-# Files that look like bots vs. plain JSON; both are attempted as JSON.
-BOT_EXTENSIONS = (".bot", ".json")
-
-# A variable reference token hypothesis: $name$ (INFERRED — confirm from export).
-VAR_REF_RE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)\$")
+# A360 variable-reference token. CONFIRMED against a real export: a reference is
+# ``$`` + optional ``@`` (global-value marker) + the variable name + an optional
+# *structured* accessor tail before the closing ``$``. Observed tails: a type
+# method (``$strTaskName.String:trim$``), a record field (``$recRunConfig{sEnv}$``),
+# a namespace member (``$System:AATaskName$``) and none (``$strBatch$``).
+#
+# The tail char class is deliberately narrow (word chars and ``. : { } [ ]``): it
+# must NOT span whitespace, quotes or operators, or a token would swallow embedded
+# VBScript/PowerShell (``$cpu``, ``$_`` …) between two unrelated ``$`` and produce
+# bogus references. Group 1 = the ``@`` marker (or empty), group 2 = the variable
+# name, group 3 = the accessor tail (used to drop namespaced refs, e.g. System:).
+VAR_REF_RE = re.compile(r"\$(@)?([A-Za-z_][A-Za-z0-9_]*)([\w.:{}\[\]]*)\$")
 
 # The one absolute-path recogniser, shared by validate + dependencies (they had
 # drifted copies — validate's lacked the POSIX branch). Windows drive | UNC | POSIX.
@@ -135,6 +143,18 @@ def is_action_node(d: Any) -> bool:
     return isinstance(d, dict) and has_ci(d, *PACKAGE_KEYS) and has_ci(d, *COMMAND_KEYS)
 
 
+def looks_like_bot(obj: Any) -> bool:
+    """True if ``obj`` is a parsed A360 taskbot: a dict with a top-level node list.
+
+    Distinguishes a taskbot from an export ``manifest.json`` (keys
+    ``files``/``packages``/``globalValues`` — no ``nodes``), so discovery can
+    accept extensionless taskbot files without also matching the manifest.
+    CONFIRMED against a real Control Room export (5/5 taskbots carry a top-level
+    ``nodes`` list; the manifest does not).
+    """
+    return isinstance(obj, dict) and isinstance(get_ci(obj, *NODES_KEYS), list)
+
+
 def node_package(d: dict) -> str | None:
     v = get_ci(d, *PACKAGE_KEYS)
     return v if isinstance(v, str) else None
@@ -175,6 +195,25 @@ def scalar_strings_in(node: Any) -> list[str]:
 
 def is_variable_reference(s: str) -> bool:
     return bool(VAR_REF_RE.search(s))
+
+
+def var_ref_names(s: str, include_globals: bool = False) -> list[str]:
+    """Variable names referenced by ``$..$`` tokens in ``s``, in order.
+
+    Returns the leading identifier of each token, so plain (``$var$``), method
+    (``$var.Type:method$``) and record-field (``$var{field}$``) forms all resolve
+    to the base variable name. Global-value references (``$@name$``) are excluded
+    unless ``include_globals`` is set, because they resolve to Control Room
+    globals rather than the bot's own declared variables.
+    """
+    names = []
+    for at, name, tail in VAR_REF_RE.findall(s):
+        if at and not include_globals:
+            continue  # $@global$ — Control Room global, not a declared bot var
+        if tail.startswith(":"):
+            continue  # $Namespace:member$ (e.g. System:) — not a declared bot var
+        names.append(name)
+    return names
 
 
 # ------------------------- command classification (heuristic) -------------------------
