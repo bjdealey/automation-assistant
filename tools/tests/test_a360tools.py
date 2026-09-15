@@ -162,6 +162,35 @@ def test_validate_undefined_variable_is_vmissing(bot):
     assert any("vMissing" in f["message"] for f in undefined)
 
 
+def test_var_ref_names_handles_real_token_forms():
+    # CONFIRMED forms from a real export: plain, type-method, record-field, global.
+    assert model.var_ref_names("$strBatch$") == ["strBatch"]
+    assert model.var_ref_names("$strTaskName.String:trim$") == ["strTaskName"]
+    assert model.var_ref_names("$recRunConfig{sEnv}$") == ["recRunConfig"]
+    assert model.var_ref_names("$a$-$b.String:upper$") == ["a", "b"]
+    # globals excluded by default, included on request
+    assert model.var_ref_names("$@Temp_Files$") == []
+    assert model.var_ref_names("$@Temp_Files$", include_globals=True) == ["Temp_Files"]
+    # a bare dollar amount is not a reference
+    assert model.var_ref_names("$5.00 due") == []
+    # namespace/system reference ($System:member$) is not a declared bot var
+    assert model.var_ref_names("[WARNING] $System:AATaskName$ missing") == []
+    # embedded VBScript/PowerShell must not be mined for references: two $ across
+    # code separated by whitespace/operators do NOT form a token
+    assert model.var_ref_names('cmd = "$env:TEMP"\n  If $_ -gt 5 Then $cpu = 1') == []
+
+
+def test_validate_global_reference_not_flagged_undefined():
+    # A global-value reference ($@Global$) must not be reported as an undefined
+    # bot variable — globals are Control Room state, not declared here.
+    bot = {"nodes": [{"packageName": "File", "commandName": "copy",
+                      "attributes": [{"name": "src", "value": {
+                          "type": "STRING", "expression": "$@RPA_Directory$/x.csv"}}]}],
+           "variables": [], "packages": []}
+    rep = validate.validate_bot(bot)
+    assert not [f for f in rep["findings"] if f["check"] == "undefined_variable"]
+
+
 # ---------------------------------- diff ----------------------------------
 
 def test_diff_detects_changes(bot):
@@ -209,12 +238,26 @@ def test_crawl_finds_fixture():
     assert "_invalid.bot" in rels
 
 
+def test_crawl_finds_extensionless_taskbot_and_skips_manifest(tmp_path):
+    # Real Control Room exports store taskbots as EXTENSIONLESS files beside a
+    # manifest.json that is not a bot. Discovery must find the bot by content
+    # and drop the manifest (the exact ground-truth failure this replaces).
+    (tmp_path / "Some Bot").write_text(  # no extension, real export layout
+        json.dumps({"nodes": [], "variables": [], "packages": []}))
+    (tmp_path / "manifest.json").write_text(
+        json.dumps({"files": [], "packages": [], "globalValues": []}))
+    (tmp_path / "preview.png").write_bytes(b"\x89PNG not json")
+
+    rels = {r["relpath"] for r in crawl.find_bot_files(str(tmp_path))}
+    assert rels == {"Some Bot"}
+
+
 def test_crawl_load_bot_files_splits_loaded_and_errors():
     loaded, errors = crawl.load_bot_files(FIXTURES)
-    assert len(loaded) == 1 and len(errors) == 1     # one good, one _invalid.bot
-    f, data = loaded[0]
-    assert f["relpath"] == "hypothesis_bot.json" and isinstance(data, dict)
-    assert errors[0]["path"].endswith("_invalid.bot")
+    rels = {f["relpath"] for f, _ in loaded}
+    assert {"hypothesis_bot.json", "real_botcode7.bot"} <= rels  # good bots load
+    assert all(isinstance(data, dict) for _, data in loaded)
+    assert len(errors) == 1 and errors[0]["path"].endswith("_invalid.bot")
 
 
 def test_inventory_handles_good_and_bad():
@@ -222,6 +265,62 @@ def test_inventory_handles_good_and_bad():
     assert inv["aggregate"]["bot_count"] >= 1
     assert inv["aggregate"]["error_count"] >= 1   # _invalid.bot
     assert any(b["relpath"] == "hypothesis_bot.json" for b in inv["bots"])
+
+
+# --------------------------- real export shape ---------------------------
+# real_botcode7.bot reproduces CONFIRMED structures from a real Control Room
+# export (botCodeVersion 7): TASKBOT taskbotFile refs, returnTo, input/output
+# variables, real package versions, and the $var$/$var.T:m$/$rec{f}$/$@g$/
+# $System:m$ reference forms. Content is synthetic (no secrets/PII); the SHAPE
+# is real. These assertions pin the extractors to that shape.
+
+REAL = os.path.join(FIXTURES, "real_botcode7.bot")
+
+
+@pytest.fixture
+def real_bot():
+    return model.load_bot(REAL)
+
+
+def test_real_bot_loads_and_is_recognised_as_bot():
+    d = model.load_bot(REAL)
+    assert model.looks_like_bot(d)
+    assert d["properties"]["botCodeVersion"] == "7"
+
+
+def test_real_bot_packages_and_io_variables(real_bot):
+    b = model.Bot.of(real_bot)
+    pkgs = {p["name"]: p["version"] for p in b.packages}
+    assert pkgs["TaskBot"] == "2.10.0-20241119-100739"
+    assert pkgs["ErrorHandler"] == "2.13.0-20241115-120032"
+    v = {x["name"]: x for x in b.variables}
+    assert v["strTaskName"]["input"] is True and v["strTaskName"]["output"] is False
+    assert v["strResult"]["output"] is True
+
+
+def test_real_bot_actions_include_runtask(real_bot):
+    pairs = {(a["package"], a["command"]) for a in model.Bot.of(real_bot).actions}
+    assert ("TaskBot", "runTask") in pairs
+    assert ("String", "replace") in pairs
+
+
+def test_real_bot_sub_bot_reference_decoded(real_bot):
+    refs = [s["reference"] for s in dependencies.extract_dependencies(real_bot)["sub_bots"]]
+    assert refs == ["repository:///Automation Anywhere/Bots/Demo/Child Bots/Sub Worker"]
+
+
+def test_real_bot_validate_has_no_false_undefined_vars(real_bot):
+    # method / record / global / namespace reference forms must all resolve; the
+    # only declared-but-referenced vars are strTaskName, strBatch, strResult.
+    rep = validate.validate_bot(real_bot)
+    assert rep["recognised"] is True
+    assert not [f for f in rep["findings"] if f["check"] == "undefined_variable"]
+
+
+def test_real_bot_complexity_counts_runtask_and_error_handlers(real_bot):
+    m = complexity.metrics(real_bot)
+    assert m["sub_bot_calls"] == 1
+    assert m["error_handlers"] == 3   # try + catch + finally
 
 
 # ---------------------------------- cli ----------------------------------

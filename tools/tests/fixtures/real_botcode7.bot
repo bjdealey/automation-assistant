@@ -1,0 +1,168 @@
+{
+  "triggers": [],
+  "nodes": [
+    {
+      "uid": "11111111-1111-4111-8111-111111111111",
+      "commandName": "Comment",
+      "packageName": "Comment",
+      "disabled": false,
+      "attributes": [
+        {
+          "name": "comment",
+          "value": { "type": "STRING", "string": "Author: Placeholder" }
+        }
+      ]
+    },
+    {
+      "uid": "22222222-2222-4222-8222-222222222222",
+      "commandName": "try",
+      "packageName": "ErrorHandler",
+      "children": [
+        {
+          "uid": "33333333-3333-4333-8333-333333333333",
+          "commandName": "replace",
+          "packageName": "String",
+          "disabled": false,
+          "attributes": [
+            {
+              "name": "sourceString",
+              "value": { "type": "STRING", "expression": "$strTaskName.String:trim$" }
+            },
+            {
+              "name": "find",
+              "value": { "type": "STRING", "string": "[^0-9_]" }
+            },
+            {
+              "name": "isRegularExpression",
+              "value": { "type": "STRING", "string": "true" }
+            }
+          ],
+          "returnTo": { "type": "VARIABLE", "variableName": "strTaskName" }
+        },
+        {
+          "uid": "44444444-4444-4444-8444-444444444444",
+          "commandName": "runTask",
+          "packageName": "TaskBot",
+          "disabled": false,
+          "attributes": [
+            {
+              "name": "taskbot",
+              "value": {
+                "type": "TASKBOT",
+                "taskbotInput": {
+                  "type": "DICTIONARY",
+                  "dictionary": [
+                    {
+                      "key": "strCompany",
+                      "value": { "type": "STRING", "expression": "$recRunConfig{sCRMCo}$" }
+                    },
+                    {
+                      "key": "strFilePath",
+                      "value": { "type": "STRING", "expression": "$@Temp_Files$" }
+                    }
+                  ]
+                },
+                "taskbotFile": {
+                  "type": "FILE",
+                  "string": "repository:///Automation%20Anywhere/Bots/Demo/Child%20Bots/Sub%20Worker"
+                }
+              }
+            },
+            {
+              "name": "repeatOption",
+              "value": { "type": "STRING", "string": "DO_NOT_REPEAT" }
+            }
+          ]
+        },
+        {
+          "uid": "55555555-5555-4555-8555-555555555555",
+          "commandName": "logToFile",
+          "packageName": "LogToFile",
+          "disabled": false,
+          "attributes": [
+            {
+              "name": "entry",
+              "value": { "type": "STRING", "expression": "[INFO] $System:AATaskName$ started for $strBatch$" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "uid": "66666666-6666-4666-8666-666666666666",
+      "commandName": "catch",
+      "packageName": "ErrorHandler",
+      "children": [
+        {
+          "uid": "77777777-7777-4777-8777-777777777777",
+          "commandName": "logToServer",
+          "packageName": "LogToFile",
+          "disabled": false,
+          "attributes": [
+            {
+              "name": "message",
+              "value": { "type": "STRING", "expression": "Failed: $strResult$" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "uid": "88888888-8888-4888-8888-888888888888",
+      "commandName": "finally",
+      "packageName": "ErrorHandler",
+      "children": []
+    }
+  ],
+  "variables": [
+    {
+      "name": "strTaskName",
+      "type": "STRING",
+      "description": "REQUIRED. Task name.",
+      "readOnly": false,
+      "input": true,
+      "output": false,
+      "defaultValue": { "type": "STRING", "string": "" }
+    },
+    {
+      "name": "strBatch",
+      "type": "STRING",
+      "description": "REQUIRED. Batch identifier.",
+      "readOnly": false,
+      "input": true,
+      "output": false,
+      "defaultValue": { "type": "STRING", "string": "" }
+    },
+    {
+      "name": "recRunConfig",
+      "type": "RECORD",
+      "readOnly": false,
+      "input": false,
+      "output": false
+    },
+    {
+      "name": "strResult",
+      "type": "STRING",
+      "readOnly": false,
+      "input": false,
+      "output": true,
+      "defaultValue": { "type": "STRING", "string": "" }
+    }
+  ],
+  "packages": [
+    { "name": "Comment", "version": "2.17.0", "settingsAttributes": [] },
+    { "name": "String", "version": "5.12.2", "settingsAttributes": [] },
+    { "name": "ErrorHandler", "version": "2.13.0-20241115-120032", "settingsAttributes": [] },
+    { "name": "TaskBot", "version": "2.10.0-20241119-100739", "settingsAttributes": [] },
+    { "name": "LogToFile", "version": "3.11.1", "settingsAttributes": [] },
+    { "name": "System", "version": "3.18.0", "settingsAttributes": [] }
+  ],
+  "properties": {
+    "botCodeVersion": "7",
+    "improvedNumberSupport": true,
+    "timeout": "0s",
+    "automationPriority": "PRIORITY_MEDIUM",
+    "runInChildWindow": false
+  },
+  "workItemTemplateName": null
+}

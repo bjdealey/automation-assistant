@@ -79,7 +79,7 @@ def validate_bot(bot: Any) -> dict:
     # 4. Variable-reference sanity ($name$ tokens vs declared variables).
     referenced: dict[str, str] = {}
     for path, _key, val in b.string_leaves:
-        for tok in model.VAR_REF_RE.findall(val):
+        for tok in model.var_ref_names(val):
             referenced.setdefault(tok, path)
     if not referenced:
         findings.append(_finding(
